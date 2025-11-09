@@ -1,0 +1,162 @@
+{
+  "name": "mr-reviewer",
+  "displayName": "MR Reviewer - AI Code Review",
+  "description": "AI-powered code review with custom API support (Gemini, Claude, GPT)",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "mr-reviewer",
+          "title": "MR Reviewer",
+          "icon": "resources/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "mr-reviewer": [
+        {
+          "id": "mr-reviewer-branches",
+          "name": "Branches"
+        },
+        {
+          "id": "mr-reviewer-changes",
+          "name": "Changes"
+        },
+        {
+          "id": "mr-reviewer-reviews",
+          "name": "Reviews"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "mr-reviewer.configureApiKey",
+        "title": "Configure API Key",
+        "category": "MR Reviewer"
+      },
+      {
+        "command": "mr-reviewer.selectAIProvider",
+        "title": "Select AI Provider",
+        "category": "MR Reviewer"
+      },
+      {
+        "command": "mr-reviewer.changeBranch",
+        "title": "Change Branch",
+        "category": "MR Reviewer"
+      },
+      {
+        "command": "mr-reviewer.startReview",
+        "title": "Start Review",
+        "category": "MR Reviewer",
+        "icon": "$(play)"
+      },
+      {
+        "command": "mr-reviewer.reviewChanges",
+        "title": "Review Changes",
+        "category": "MR Reviewer"
+      },
+      {
+        "command": "mr-reviewer.selectReviewType",
+        "title": "Select Review Type",
+        "category": "MR Reviewer",
+        "icon": "$(filter)"
+      },
+      {
+        "command": "mr-reviewer.refreshChanges",
+        "title": "Refresh Changes",
+        "category": "MR Reviewer",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "mr-reviewer.viewComment",
+        "title": "View Comment",
+        "category": "MR Reviewer"
+      },
+      {
+        "command": "mr-reviewer.configureRules",
+        "title": "Configure Custom Rules",
+        "category": "MR Reviewer"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "mr-reviewer.startReview",
+          "when": "view == mr-reviewer-changes",
+          "group": "navigation@1"
+        },
+        {
+          "command": "mr-reviewer.selectReviewType",
+          "when": "view == mr-reviewer-changes",
+          "group": "navigation@2"
+        },
+        {
+          "command": "mr-reviewer.refreshChanges",
+          "when": "view == mr-reviewer-changes",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "MR Reviewer",
+      "properties": {
+        "mr-reviewer.aiProvider": {
+          "type": "string",
+          "enum": [
+            "gemini",
+            "claude",
+            "openai"
+          ],
+          "default": "gemini",
+          "description": "AI provider for code review"
+        },
+        "mr-reviewer.customRules": {
+          "type": "array",
+          "default": [],
+          "description": "Custom review rules",
+          "items": {
+            "type": "string"
+          }
+        },
+        "mr-reviewer.baseBranch": {
+          "type": "string",
+          "default": "master",
+          "description": "Default base branch for comparison"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^20.x",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.x",
+    "@typescript-eslint/parser": "^6.x",
+    "eslint": "^8.x",
+    "typescript": "^5.3.0"
+  },
+  "dependencies": {
+    "@google/genai": "^1.29.0",
+    "axios": "^1.6.0"
+  }
+}
