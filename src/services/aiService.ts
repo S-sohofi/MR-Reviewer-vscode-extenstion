@@ -94,7 +94,7 @@ export class AIService {
 						.join("\n")}`
 				: "";
 
-		return `You are an expert code reviewer. Review the following code changes and provide detailed feedback.
+		return `You are an expert code reviewer. Review the following code changes and provide ONLY CRITICAL and ACTIONABLE feedback.
 
 FILE: ${filePath}
 
@@ -111,48 +111,63 @@ ${rulesSection}
 
 REVIEW INSTRUCTIONS:
 1. Analyze the changes in the context of the full file
-2. Look for:
-   - Bugs and potential runtime errors
-   - Security vulnerabilities
-   - Performance issues
+2. Report ONLY significant issues:
+   - Critical bugs and runtime errors (use "error" severity)
+   - Security vulnerabilities (use "error" severity)
+   - Significant performance issues (use "warning" severity)
+   - Important best practice violations (use "warning" severity)
+   - Missing error handling that could cause failures (use "warning" severity)
    - Code smells and anti-patterns
    - Best practice violations
    - Missing error handling
    - Type safety issues
    - Memory leaks or resource management issues
-   - Accessibility concerns (for UI code)
-   - Thread safety issues (if applicable)
-3. Consider the overall code quality and maintainability
-4. Check if custom rules are followed (if provided)
-5. Be specific about line numbers and provide actionable suggestions
+3. DO NOT report:
+   - Stylistic preferences or formatting
+   - Minor improvements that don't affect functionality
+   - Overly general advice or educational comments
+   - Issues in unchanged code
+   - Suggestions about code structure unless critically flawed
+4. Each comment must be:
+   - Specific to an actual problem
+   - Directly actionable
+   - Worth the developer's immediate attention
+5. When providing suggestions, give concrete code examples
+
+SEVERITY GUIDELINES:
+- "error": Critical bugs, security issues, or code that will definitely fail
+- "warning": Important issues that should be fixed but won't cause immediate failure
+- "info": Use sparingly, only for important notes about changed code
+- "suggestion": Use rarely, only for meaningful improvements with clear benefits
 
 RESPONSE FORMAT:
 Return your review as a JSON array of comments. Each comment must have:
 - line: the line number in the file (integer)
 - severity: one of "error", "warning", "info", "suggestion"
-- message: clear description of the issue
-- suggestion: (optional) specific code suggestion or fix
+- message: concise, clear description of the specific issue (max 100 chars)
+- suggestion: (optional) specific code fix or solution
 
 Example:
 [
   {
     "line": 42,
     "severity": "error",
-    "message": "Potential null pointer exception when accessing user.name without null check",
-    "suggestion": "Add null check: if (user && user.name) { ... }"
+    "message": "Null pointer exception: user.name accessed without null check",
+    "suggestion": "if (user?.name) { ... }"
   },
   {
     "line": 58,
     "severity": "warning",
-    "message": "This function has high cyclomatic complexity (15). Consider refactoring into smaller functions."
+    "message": "Unhandled promise rejection in async operation",
+    "suggestion": "Add try-catch block or .catch() handler"
   }
 ]
 
 IMPORTANT:
 - Only return the JSON array, no additional text
-- If there are no issues, return an empty array: []
-- Be thorough but focus on meaningful issues
-- Provide line numbers that correspond to the current file content`;
+- If there are no SIGNIFICANT issues, return an empty array: []
+- Quality over quantity - fewer meaningful commentare betters  than many trivial ones
+- Be concise in messages - developers should understand the issue quickly`;
 	}
 
 	private async callGemini(apiKey: string, prompt: string): Promise<string> {

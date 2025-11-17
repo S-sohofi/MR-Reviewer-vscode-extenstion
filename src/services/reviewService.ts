@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { ConfigurationService } from './configurationService';
 import { GitService } from './gitService';
 import { AIService } from './aiService';
+import { CommentViewService } from './commentViewService';
 import { ReviewResult, ReviewComment, FileChange } from '../types';
 
 export type ReviewType = 'uncommitted' | 'committed' | 'all';
@@ -9,21 +10,17 @@ export type ReviewType = 'uncommitted' | 'committed' | 'all';
 export class ReviewService {
     private reviewResults: ReviewResult[] = [];
     private aiService: AIService;
-    private decorationType: vscode.TextEditorDecorationType;
+    private commentViewService: CommentViewService;
     private _onReviewUpdate = new vscode.EventEmitter<void>();
     public readonly onReviewUpdate = this._onReviewUpdate.event;
 
     constructor(
         private configService: ConfigurationService,
-        private gitService: GitService
+        private gitService: GitService,
+        private context: vscode.ExtensionContext
     ) {
         this.aiService = new AIService();
-        this.decorationType = vscode.window.createTextEditorDecorationType({
-            backgroundColor: 'rgba(255, 200, 0, 0.2)',
-            isWholeLine: true,
-            overviewRulerColor: 'yellow',
-            overviewRulerLane: vscode.OverviewRulerLane.Right
-        });
+        this.commentViewService = new CommentViewService(context);
     }
 
     async startReview(reviewType: ReviewType = 'all'): Promise<void> {
@@ -133,7 +130,7 @@ export class ReviewService {
     async navigateToComment(comment: ReviewComment): Promise<void> {
         const uri = vscode.Uri.file(comment.filePath);
         const document = await vscode.workspace.openTextDocument(uri);
-        const editor = await vscode.window.showTextDocument(document);
+        const editor = await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
 
         const line = Math.max(0, comment.line - 1);
         const range = new vscode.Range(line, 0, line, 0);
@@ -141,47 +138,16 @@ export class ReviewService {
         editor.selection = new vscode.Selection(range.start, range.end);
         editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
 
-        this.highlightLine(editor, line);
-
-        const severityIcon = this.getSeverityIcon(comment.severity);
-        
-        if (comment.suggestion) {
-            const result = await vscode.window.showInformationMessage(
-                `${severityIcon} ${comment.severity.toUpperCase()}: ${comment.message}`,
-                'View Suggestion'
-            );
-
-            if (result === 'View Suggestion') {
-                vscode.window.showInformationMessage(`Suggestion: ${comment.suggestion}`);
-            }
-        } else {
-            vscode.window.showInformationMessage(
-                `${severityIcon} ${comment.severity.toUpperCase()}: ${comment.message}`
-            );
-        }
-    }
-
-    private highlightLine(editor: vscode.TextEditor, line: number): void {
-        const range = new vscode.Range(line, 0, line, editor.document.lineAt(line).text.length);
-        editor.setDecorations(this.decorationType, [range]);
-
-        setTimeout(() => {
-            editor.setDecorations(this.decorationType, []);
-        }, 3000);
-    }
-
-    private getSeverityIcon(severity: string): string {
-        switch (severity) {
-            case 'error': return '❌';
-            case 'warning': return '⚠️';
-            case 'info': return 'ℹ️';
-            case 'suggestion': return '💡';
-            default: return '📝';
-        }
+        // Show comment in side panel
+        await this.commentViewService.showComment(comment, editor);
     }
 
     clearReviews(): void {
         this.reviewResults = [];
         this._onReviewUpdate.fire();
+    }
+
+    dispose(): void {
+        this.commentViewService.dispose();
     }
 }

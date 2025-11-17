@@ -11,7 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
 
     const configService = new ConfigurationService(context);
     const gitService = new GitService();
-    const reviewService = new ReviewService(configService, gitService);
+    const reviewService = new ReviewService(configService, gitService, context);
 
     const branchesProvider = new BranchesProvider(gitService);
     const changesProvider = new ChangesProvider(gitService, reviewService);

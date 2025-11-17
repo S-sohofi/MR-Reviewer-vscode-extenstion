@@ -35,7 +35,18 @@ export class ReviewsProvider implements vscode.TreeDataProvider<ReviewItem> {
                 )
             );
         } else if (element.result && element.result.comments.length > 0) {
-            return element.result.comments.map((comment, index) =>
+            // Sort comments by severity: error > warning > info > suggestion
+            const severityOrder = { 'error': 0, 'warning': 1, 'info': 2, 'suggestion': 3 };
+            const sortedComments = [...element.result.comments].sort((a, b) => {
+                const orderA = severityOrder[a.severity] ?? 4;
+                const orderB = severityOrder[b.severity] ?? 4;
+                if (orderA !== orderB) {
+                    return orderA - orderB;
+                }
+                return a.line - b.line;
+            });
+
+            return sortedComments.map((comment, index) =>
                 new ReviewItem(
                     `Line ${comment.line}: ${comment.message.substring(0, 50)}...`,
                     null,
@@ -90,29 +101,74 @@ class ReviewItem extends vscode.TreeItem {
         if (result.status === 'pending') {
             return '⏳ Pending';
         }
-        const count = result.comments.length;
-        return count > 0 ? `${count} comment${count > 1 ? 's' : ''}` : '✓ No issues';
+        
+        // Count comments by severity
+        const errors = result.comments.filter(c => c.severity === 'error').length;
+        const warnings = result.comments.filter(c => c.severity === 'warning').length;
+        const infos = result.comments.filter(c => c.severity === 'info').length;
+        const suggestions = result.comments.filter(c => c.severity === 'suggestion').length;
+        
+        if (result.comments.length === 0) {
+            return '✓ No issues';
+        }
+        
+        // Build description with counts
+        const parts: string[] = [];
+        if (errors > 0) {
+            parts.push(`${errors} error${errors > 1 ? 's' : ''}`);
+        }
+        if (warnings > 0) {
+            parts.push(`${warnings} warning${warnings > 1 ? 's' : ''}`);
+        }
+        if (infos > 0) {
+            parts.push(`${infos} info`);
+        }
+        if (suggestions > 0) {
+            parts.push(`${suggestions} suggestion${suggestions > 1 ? 's' : ''}`);
+        }
+        
+        return parts.join(', ');
     }
 
     private getIcon(result: ReviewResult): vscode.ThemeIcon {
         switch (result.status) {
-            case 'reviewing': return new vscode.ThemeIcon('loading~spin');
-            case 'completed': 
-                return result.comments.length > 0 
-                    ? new vscode.ThemeIcon('warning') 
-                    : new vscode.ThemeIcon('pass');
-            case 'error': return new vscode.ThemeIcon('error');
-            default: return new vscode.ThemeIcon('clock');
+            case 'reviewing': 
+                return new vscode.ThemeIcon('loading~spin', new vscode.ThemeColor('charts.blue'));
+            case 'completed': {
+                if (result.comments.length === 0) {
+                    return new vscode.ThemeIcon('pass', new vscode.ThemeColor('testing.iconPassed'));
+                }
+                // Use icon color based on highest severity
+                const hasErrors = result.comments.some(c => c.severity === 'error');
+                const hasWarnings = result.comments.some(c => c.severity === 'warning');
+                
+                if (hasErrors) {
+                    return new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+                } else if (hasWarnings) {
+                    return new vscode.ThemeIcon('warning', new vscode.ThemeColor('editorWarning.foreground'));
+                } else {
+                    return new vscode.ThemeIcon('info', new vscode.ThemeColor('charts.blue'));
+                }
+            }
+            case 'error': 
+                return new vscode.ThemeIcon('x', new vscode.ThemeColor('errorForeground'));
+            default: 
+                return new vscode.ThemeIcon('clock', new vscode.ThemeColor('charts.yellow'));
         }
     }
 
     private getSeverityIcon(severity: string): vscode.ThemeIcon {
         switch (severity) {
-            case 'error': return new vscode.ThemeIcon('error');
-            case 'warning': return new vscode.ThemeIcon('warning');
-            case 'info': return new vscode.ThemeIcon('info');
-            case 'suggestion': return new vscode.ThemeIcon('lightbulb');
-            default: return new vscode.ThemeIcon('comment');
+            case 'error': 
+                return new vscode.ThemeIcon('error', new vscode.ThemeColor('errorForeground'));
+            case 'warning': 
+                return new vscode.ThemeIcon('warning', new vscode.ThemeColor('editorWarning.foreground'));
+            case 'info': 
+                return new vscode.ThemeIcon('info', new vscode.ThemeColor('charts.blue'));
+            case 'suggestion': 
+                return new vscode.ThemeIcon('lightbulb', new vscode.ThemeColor('charts.yellow'));
+            default: 
+                return new vscode.ThemeIcon('comment', new vscode.ThemeColor('foreground'));
         }
     }
 }
